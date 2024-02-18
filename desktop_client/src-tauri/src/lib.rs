@@ -1,9 +1,11 @@
+pub mod io;
+
 use std::fs::File;
 use std::io::BufWriter;
+use std::io::Write;
 use std::sync::Arc;
 use std::sync::Mutex;
 
-use anyhow::bail;
 use cpal::traits::DeviceTrait;
 use cpal::traits::HostTrait;
 use cpal::traits::StreamTrait;
@@ -43,65 +45,76 @@ fn wav_spec_from_config(config: &cpal::SupportedStreamConfig) -> hound::WavSpec 
     }
 }
 
-pub fn record() -> anyhow::Result<()> {
-    let host = cpal::default_host();
-    let device = host.default_input_device();
-    let Some(device) = device else {
-        bail!("No default input device found");
-    };
-    let config = device.default_input_config()?;
-    println!("Default input config: {:?}", config);
-    let wav_spec = wav_spec_from_config(&config);
+pub struct AudioRecorder {
+    should_stop: Arc<Mutex<bool>>,
+    config: cpal::SupportedStreamConfig,
+    device: cpal::Device,
+    pub path: String,
+}
 
-    const PATH: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/recorded.wav");
-    let writer = hound::WavWriter::create(PATH, wav_spec)?;
-    let writer = Arc::new(Mutex::new(Some(writer)));
-    let writer_2 = writer.clone();
+impl Default for AudioRecorder {
+    fn default() -> Self {
+        let path = "/tmp/recording.wav";
+        let host = cpal::default_host();
+        let device = host.default_input_device().unwrap();
+        let config = device.default_input_config().unwrap();
 
-    let err_fn = move |err| {
-        eprintln!("an error occurred on stream: {}", err);
-    };
-
-    let stream = match config.sample_format() {
-        cpal::SampleFormat::I8 => device.build_input_stream(
-            &config.into(),
-            move |data, _: &_| write_input_data::<i8, i8>(data, &writer_2),
-            err_fn,
-            None,
-        )?,
-        cpal::SampleFormat::I16 => device.build_input_stream(
-            &config.into(),
-            move |data, _: &_| write_input_data::<i16, i16>(data, &writer_2),
-            err_fn,
-            None,
-        )?,
-        cpal::SampleFormat::I32 => device.build_input_stream(
-            &config.into(),
-            move |data, _: &_| write_input_data::<i32, i32>(data, &writer_2),
-            err_fn,
-            None,
-        )?,
-        cpal::SampleFormat::F32 => device.build_input_stream(
-            &config.into(),
-            move |data, _: &_| write_input_data::<f32, f32>(data, &writer_2),
-            err_fn,
-            None,
-        )?,
-        sample_format => {
-            return Err(anyhow::Error::msg(format!(
-                "Unsupported sample format '{sample_format}'"
-            )))
+        let path = path.to_string();
+        Self {
+            config,
+            device,
+            path,
+            should_stop: Arc::new(Mutex::new(false)),
         }
-    };
+    }
+}
 
-    println!("Recording to {:?}.", PATH);
-    stream.play()?;
+impl AudioRecorder {
+    pub fn start(&self) -> anyhow::Result<()> {
+        let spec = wav_spec_from_config(&self.config);
+        if let Ok(mut file) = File::create(&self.path) {
+            file.write_all(&[])?;
+        }
+        let writer = hound::WavWriter::create(self.path.clone(), spec).unwrap();
+        let writer = Arc::new(Mutex::new(Some(writer)));
+        let writer_2 = writer.clone();
+        let err_fn = move |err| {
+            eprintln!("an error occurred on stream: {}", err);
+        };
 
-    std::thread::sleep(std::time::Duration::from_secs(3));
-    drop(stream);
-    writer.lock().unwrap().take().unwrap().finalize()?;
-    println!("Recording {} complete!", PATH);
-    Ok(())
+        let stream = match self.config.sample_format() {
+            cpal::SampleFormat::F32 => self.device.build_input_stream(
+                &self.config.clone().into(),
+                move |data, _: &_| write_input_data::<f32, f32>(data, &writer_2),
+                err_fn,
+                None,
+            )?,
+            sample_format => {
+                return Err(anyhow::Error::msg(format!(
+                    "Unsupported sample format '{sample_format}'"
+                )))
+            }
+        };
+        println!("Recording to {:?}.", self.path);
+        stream.play()?;
+        while !*self.should_stop.lock().unwrap() {
+            std::thread::sleep(std::time::Duration::from_millis(100));
+            println!("Recording...");
+        }
+        drop(stream);
+        writer.lock().unwrap().take().unwrap().finalize()?;
+        println!("Recording complete.");
+        *self.should_stop.lock().unwrap() = false;
+        Ok(())
+    }
+
+    pub fn stop(&self) {
+        *self.should_stop.lock().unwrap() = true;
+    }
+
+    pub fn is_stopped(&self) -> bool {
+        *self.should_stop.lock().unwrap()
+    }
 }
 
 type WavWriterHandle = Arc<Mutex<Option<hound::WavWriter<BufWriter<File>>>>>;
