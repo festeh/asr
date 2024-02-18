@@ -4,7 +4,7 @@
     "beforeBuildCommand": "pnpm run build",
     "beforeDevCommand": "pnpm run dev",
     "devPath": "http://localhost:5142",
-    "distDir": "../public"
+    "distDir": "../.svelte-kit/output"
   },
   "package": {
     "productName": "desktop-client",
