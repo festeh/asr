@@ -10,8 +10,13 @@ async fn start_recording(recorder: tauri::State<'_, app::AudioRecorder>) -> Resu
 }
 
 #[tauri::command]
-async fn stop_recording(recorder: tauri::State<'_, app::AudioRecorder>) -> Result<String, String> {
+async fn stop_recording(recorder: tauri::State<'_, app::AudioRecorder>) -> Result<(), String> {
     recorder.stop();
+    Ok(())
+}
+
+#[tauri::command]
+async fn get_audio(recorder: tauri::State<'_, app::AudioRecorder>) -> Result<String, String> {
     while !recorder.is_stopped() {
         std::thread::sleep(std::time::Duration::from_millis(100));
     }
@@ -41,7 +46,11 @@ fn main() {
                 }
             }
         })
-        .invoke_handler(tauri::generate_handler![start_recording, stop_recording])
+        .invoke_handler(tauri::generate_handler![
+            start_recording,
+            stop_recording,
+            get_audio
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
