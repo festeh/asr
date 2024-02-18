@@ -48,14 +48,16 @@ pub fn write_resampled(left: Vec<f32>, right: Vec<f32>, output_path: &str) {
     let spec = hound::WavSpec {
         channels: 2,
         sample_rate: 16000,
-        bits_per_sample: 32,
-        sample_format: hound::SampleFormat::Float,
+        bits_per_sample: 16,
+        sample_format: hound::SampleFormat::Int,
     };
     let mut writer = hound::WavWriter::create(output_path, spec).unwrap();
 
     for (left_sample, right_sample) in left.iter().zip(right.iter()) {
-        writer.write_sample(*left_sample).unwrap();
-        writer.write_sample(*right_sample).unwrap();
+        let left_amplitude = (left_sample * i16::MAX as f32) as i16;
+        let right_amplitude = (right_sample * i16::MAX as f32) as i16;
+        writer.write_sample(left_amplitude).unwrap();
+        writer.write_sample(right_amplitude).unwrap();
     }
 
     println!("Wrote resampled audio to {}", output_path);

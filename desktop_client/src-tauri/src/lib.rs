@@ -78,7 +78,7 @@ impl AudioRecorder {
         let root = dirs::data_dir().unwrap();
         let audio_dir = root.join("audios");
         std::fs::create_dir_all(&audio_dir).unwrap();
-        let timestamp = chrono::Local::now().format("%S-%M-%H-%d-%m-%Y").to_string();
+        let timestamp = chrono::Local::now().format("%H-%M-%S-%d-%m-%Y").to_string();
         let filneame = format!("{}.wav", timestamp);
         *self.path.lock().unwrap() = Some(audio_dir.join(filneame));
     }
