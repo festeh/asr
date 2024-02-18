@@ -18,7 +18,9 @@
 			invoke('stop_recording').then((response) => {
 				console.log('Recording stopped', response);
 				invoke('get_audio').then((response) => {
-					audio = wavFromBase64(response as string);
+					const audioStr = response as string;
+					console.log('Audio received', audioStr.slice(0, 100));
+					audio = wavFromBase64(audioStr);
 				});
 			});
 		}
@@ -27,11 +29,20 @@
 
 	function playAudio() {
 		if (audio === undefined) {
-			console.log('No audio to play');
+			console.log('Audio not loaded, fetching from backend');
+			invoke('get_audio').then((response) => {
+				const audioStr = response as string;
+				console.log('Audio received from backend', audioStr.slice(0, 100));
+				audio = wavFromBase64(audioStr);
+			});
 		}
-    audio!.currentTime = 0;
-    audio!.currentTime += 0;
-		audio!.play();
+		// audio!.currentTime = 0;
+		// audio!.currentTime += 0;
+		audio.play().then(() => {
+      console.log('Audio played');
+    }).catch((error) => {
+      console.error('Audio play error', error);
+    })
 	}
 
 	function pauseAudio() {

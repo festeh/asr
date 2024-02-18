@@ -1,8 +1,10 @@
 pub mod io;
+pub mod resample;
 
 use std::fs::File;
 use std::io::BufWriter;
 use std::io::Write;
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::Mutex;
 
@@ -46,36 +48,56 @@ fn wav_spec_from_config(config: &cpal::SupportedStreamConfig) -> hound::WavSpec 
 }
 
 pub struct AudioRecorder {
-    should_stop: Arc<Mutex<bool>>,
+    stop_signal: Arc<Mutex<bool>>,
     config: cpal::SupportedStreamConfig,
     device: cpal::Device,
-    pub path: String,
+    path: Arc<Mutex<Option<PathBuf>>>,
 }
 
 impl Default for AudioRecorder {
     fn default() -> Self {
-        let path = "/tmp/recording.wav";
         let host = cpal::default_host();
         let device = host.default_input_device().unwrap();
         let config = device.default_input_config().unwrap();
 
-        let path = path.to_string();
         Self {
             config,
             device,
-            path,
-            should_stop: Arc::new(Mutex::new(false)),
+            path: Arc::new(Mutex::new(None)),
+            stop_signal: Arc::new(Mutex::new(false)),
         }
     }
 }
 
 impl AudioRecorder {
+    pub fn get_path(&self) -> Option<PathBuf> {
+        self.path.lock().unwrap().clone()
+    }
+
+    pub fn set_path(&self) {
+        let root = dirs::data_dir().unwrap();
+        let audio_dir = root.join("audios");
+        std::fs::create_dir_all(&audio_dir).unwrap();
+        let timestamp = chrono::Local::now().format("%S-%M-%H-%d-%m-%Y").to_string();
+        let filneame = format!("{}.wav", timestamp);
+        *self.path.lock().unwrap() = Some(audio_dir.join(filneame));
+    }
+
+    pub fn get_tmp_path(&self) -> PathBuf {
+        let root = dirs::data_dir().unwrap();
+        let audio_dir = root.join("audios");
+        std::fs::create_dir_all(&audio_dir).unwrap();
+        let filneame = "tmp.wav";
+        audio_dir.join(filneame)
+    }
+
     pub fn start(&self) -> anyhow::Result<()> {
         let spec = wav_spec_from_config(&self.config);
-        if let Ok(mut file) = File::create(&self.path) {
+        let tmp_path = self.get_tmp_path();
+        if let Ok(mut file) = File::create(&tmp_path) {
             file.write_all(&[])?;
         }
-        let writer = hound::WavWriter::create(self.path.clone(), spec).unwrap();
+        let writer = hound::WavWriter::create(tmp_path.clone(), spec).unwrap();
         let writer = Arc::new(Mutex::new(Some(writer)));
         let writer_2 = writer.clone();
         let err_fn = move |err| {
@@ -95,25 +117,32 @@ impl AudioRecorder {
                 )))
             }
         };
-        println!("Recording to {:?}.", self.path);
+        *self.stop_signal.lock().unwrap() = false;
+        println!("Recording to {:?}.", tmp_path);
         stream.play()?;
-        while !*self.should_stop.lock().unwrap() {
+        let mut max_duration = std::time::Duration::from_secs(60);
+        while !*self.stop_signal.lock().unwrap() {
             std::thread::sleep(std::time::Duration::from_millis(100));
+            max_duration -= std::time::Duration::from_millis(100);
+            if max_duration.as_secs() == 0 {
+                break;
+            }
             println!("Recording...");
         }
         drop(stream);
         writer.lock().unwrap().take().unwrap().finalize()?;
         println!("Recording complete.");
-        *self.should_stop.lock().unwrap() = false;
+        *self.stop_signal.lock().unwrap() = false;
         Ok(())
     }
 
-    pub fn stop(&self) {
-        *self.should_stop.lock().unwrap() = true;
+    pub fn order_stop(&self) {
+        println!("Set should_stop to true.");
+        *self.stop_signal.lock().unwrap() = true;
     }
 
-    pub fn is_stopped(&self) -> bool {
-        *self.should_stop.lock().unwrap()
+    pub fn is_stopping(&self) -> bool {
+        *self.stop_signal.lock().unwrap()
     }
 }
 
