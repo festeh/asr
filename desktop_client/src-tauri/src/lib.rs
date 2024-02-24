@@ -8,9 +8,11 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::Mutex;
 
+use cpal::platform::AlsaDevice;
 use cpal::traits::DeviceTrait;
 use cpal::traits::HostTrait;
 use cpal::traits::StreamTrait;
+use cpal::Device;
 use cpal::{FromSample, Sample};
 
 #[derive(Clone)]
@@ -39,6 +41,9 @@ fn sample_format(format: cpal::SampleFormat) -> hound::SampleFormat {
 }
 
 fn wav_spec_from_config(config: &cpal::SupportedStreamConfig) -> hound::WavSpec {
+    println!("Channels: {}", config.channels());
+    println!("Sample rate: {}", config.sample_rate().0);
+    println!("Sample format: {:?}", config.sample_format());
     hound::WavSpec {
         channels: config.channels() as _,
         sample_rate: config.sample_rate().0 as _,
@@ -57,8 +62,18 @@ pub struct AudioRecorder {
 impl Default for AudioRecorder {
     fn default() -> Self {
         let host = cpal::default_host();
-        let device = host.default_input_device().unwrap();
+        let mut device = host.default_input_device().unwrap();
+        host.input_devices().unwrap().for_each(|indevice| {
+            println!("Device: {:?}", indevice.name().unwrap());
+            if indevice.name().unwrap().contains("front:CARD=K66") {
+                println!("Setting device to: {:?}", indevice.name().unwrap());
+                device = indevice;
+                return;
+            }
+            println!();
+        });
         let config = device.default_input_config().unwrap();
+        println!("Default input config: {:?}", config);
 
         Self {
             config,
@@ -108,6 +123,12 @@ impl AudioRecorder {
             cpal::SampleFormat::F32 => self.device.build_input_stream(
                 &self.config.clone().into(),
                 move |data, _: &_| write_input_data::<f32, f32>(data, &writer_2),
+                err_fn,
+                None,
+            )?,
+            cpal::SampleFormat::I16 => self.device.build_input_stream(
+                &self.config.clone().into(),
+                move |data, _: &_| write_input_data::<i16, i16>(data, &writer_2),
                 err_fn,
                 None,
             )?,

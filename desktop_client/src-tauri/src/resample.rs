@@ -1,4 +1,4 @@
-use std::io::prelude::{Read, Seek, Write};
+use std::{f32, io::prelude::{Read, Seek, Write}};
 
 // resample a file with rubato
 use rubato::{
@@ -10,7 +10,7 @@ pub fn resample_audio(path: &str) -> Result<(Vec<f32>, Vec<f32>), Box<dyn std::e
     let mut reader = hound::WavReader::open(path).unwrap();
 
     // Get the samples from the WAV file
-    let samples: Vec<f32> = reader.samples::<f32>().map(|s| s.unwrap()).collect();
+    let samples: Vec<f32> = reader.samples::<i16>().map(|s| s.unwrap() as f32 / i16::MAX as f32).collect();
     println!("Read {} samples", samples.len());
     let mut left = Vec::new();
     let mut right = Vec::new();
@@ -46,7 +46,7 @@ pub fn resample_audio(path: &str) -> Result<(Vec<f32>, Vec<f32>), Box<dyn std::e
 
 pub fn write_resampled(left: Vec<f32>, right: Vec<f32>, output_path: &str) {
     let spec = hound::WavSpec {
-        channels: 2,
+        channels: 1,
         sample_rate: 16000,
         bits_per_sample: 16,
         sample_format: hound::SampleFormat::Int,
@@ -54,9 +54,9 @@ pub fn write_resampled(left: Vec<f32>, right: Vec<f32>, output_path: &str) {
     let mut writer = hound::WavWriter::create(output_path, spec).unwrap();
 
     for (left_sample, right_sample) in left.iter().zip(right.iter()) {
-        let left_amplitude = (left_sample * i16::MAX as f32) as i16;
+        // let left_amplitude = (left_sample * i16::MAX as f32) as i16;
         let right_amplitude = (right_sample * i16::MAX as f32) as i16;
-        writer.write_sample(left_amplitude).unwrap();
+        // writer.write_sample(left_amplitude).unwrap();
         writer.write_sample(right_amplitude).unwrap();
     }
 
