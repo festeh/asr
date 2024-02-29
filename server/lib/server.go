@@ -20,20 +20,24 @@ func NewServer(model *WhisperModel) *Server {
 }
 
 type RequestData struct {
-	Audio string `json:"audio"`
+	AudioEncoded string `json:"audio"`
+	Lang	string `json:"lang"`
 }
 
 type handler func(http.ResponseWriter, *http.Request)
 
-func extractAudioKey(r *http.Request) (string, error) {
+func parseData(r *http.Request) (*RequestData, error) {
 	defer r.Body.Close()
 	data := json.NewDecoder(r.Body)
 	var reqData RequestData
 	err := data.Decode(&reqData)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return reqData.Audio, nil
+	if reqData.Lang == "" {
+		reqData.Lang = "auto"
+	}
+	return &reqData, nil
 }
 
 func (s *Server) handleRecognition() handler {
@@ -42,17 +46,17 @@ func (s *Server) handleRecognition() handler {
 		defer func() { <-s.queue }()
 		s.queue <- 1
 		fmt.Println("Processing...")
-		rawData, err := extractAudioKey(r)
+		parsed, err := parseData(r)
 		if err != nil {
 			http.Error(w, "Error parsing request", http.StatusBadRequest)
 			return
 		}
-		data, err := ProcessWavStream(rawData)
+		audio, err := DecodeAudio(parsed.AudioEncoded)
 		if err != nil {
 			http.Error(w, "Error processing audio", http.StatusInternalServerError)
 			return
 		}
-		s.model.Predict(data)
+		s.model.Predict(audio, parsed.Lang)
 		fmt.Fprint(w, "done")
 	}
 }

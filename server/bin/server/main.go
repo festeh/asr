@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-	model, err := lib.NewWhisperModel("/home/dlipin/projects/audiorec/whisper.cpp/models/ggml-tiny.bin")
+	model, err := lib.NewWhisperModel("/home/dlipin/projects/audiorec/whisper.cpp/models/ggml-small.bin")
 	if err != nil {
 		log.Fatal(err)
 	}

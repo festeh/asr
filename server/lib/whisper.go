@@ -25,8 +25,10 @@ func NewWhisperModel(modelPath string) (*WhisperModel, error) {
 	}, nil
 }
 
-func (w *WhisperModel) Predict(data []float32) error {
-	w.context.SetLanguage("de")
+func (w *WhisperModel) Predict(data []float32, lang string) error {
+	println("Predicting...")
+	println(lang)
+	w.context.SetLanguage(lang)
 	var cb whisper.SegmentCallback = func(segment whisper.Segment) {
 		// Do something with the Segment
 		println(segment.Text)

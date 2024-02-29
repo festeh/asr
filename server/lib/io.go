@@ -19,7 +19,7 @@ func decodeBase64(rawData string) (string, error) {
 	return resultStr, nil
 }
 
-func ProcessWavStream(rawData string) ([]float32, error) {
+func DecodeAudio(rawData string) ([]float32, error) {
 	decompressedData, err := decodeBase64(rawData)
 	decoder := wav.NewDecoder(strings.NewReader(decompressedData))
 	buf, err := decoder.FullPCMBuffer()
