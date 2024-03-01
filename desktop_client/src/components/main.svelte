@@ -1,8 +1,8 @@
 <script lang="ts">
 	import Recording from './recording.svelte';
-	import Playback from './playback.svelte';
   import Result from './result.svelte';
-  import Language from './language.svelte';
+  import LanguageSelector from './language_select.svelte';
+	import Control from './control.svelte';
 </script>
 
 <div class="flex h-screen flex-col items-center">
@@ -13,7 +13,7 @@
 	</div>
 	<div class="h-1/5">
 		<div class="flex h-full flex-col justify-start">
-			<Playback />
+			<Control />
 		</div>
 	</div>
 	<div class="h-1/5">
@@ -24,7 +24,7 @@
 
 	<div class="h-1/5">
 		<div class="flex h-full flex-col justify-start">
-			<Language />
+			<LanguageSelector />
 		</div>
 	</div>
 </div>

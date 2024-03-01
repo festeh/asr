@@ -3,9 +3,10 @@
 	import { invoke } from '@tauri-apps/api/tauri';
 	import { wavFromBase64 } from '$lib/audio';
 	import { audioStore } from '../stores/audio';
+	import Button from './button.svelte';
 
 	let status: RecordingStatus = RecordingStatus.IDLE;
-	$: buttonText = status === RecordingStatus.IDLE ? 'Start Recording' : 'Stop Recording';
+	$: buttonText = status === RecordingStatus.IDLE ? 'Record' : 'Stop';
 
 	function toggleStatus() {
 		if (status === RecordingStatus.IDLE) {
@@ -24,11 +25,12 @@
 		}
 		status = status === RecordingStatus.IDLE ? RecordingStatus.RECORDING : RecordingStatus.IDLE;
 	}
+
 </script>
 
 <div class="flex">
-	<button on:click={() => toggleStatus()} class="btn btn-lg border">{buttonText}</button>
-	<div class="border flex justify-center items-center rounded-lg ml-4 p-2 font-bold bg-secondary-900">
+  <Button on:click={toggleStatus}>{buttonText}</Button>
+	<div class="border flex justify-center items-center rounded-lg p-2 font-bold bg-secondary-700">
 		{status}
 	</div>
 </div>
