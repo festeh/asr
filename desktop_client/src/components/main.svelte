@@ -5,7 +5,7 @@
 	import Control from './control.svelte';
 </script>
 
-<div class="flex h-screen flex-col items-center">
+<div class="flex h-screen flex-col items-center text-lg font-sans">
 	<div class="h-2/5">
 		<div class="flex h-full flex-col  justify-center">
 			<Recording />

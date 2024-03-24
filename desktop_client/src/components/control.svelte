@@ -3,7 +3,6 @@
 	import { get } from 'svelte/store';
 	import { invoke } from '@tauri-apps/api/tauri';
 	import { wavFromBase64 } from '$lib/audio';
-	import { resultStore } from '../stores/result';
 	import Button from './button.svelte';
 
 	type State = 'empty' | 'nonempty';
@@ -45,23 +44,6 @@
 		audio.pause();
 	}
 
-	function recognizeAudio() {
-		fetch('http://localhost:8000/recognize', {
-			method: 'POST',
-			headers: {
-				'Content-Type': 'application/json'
-			},
-			body: JSON.stringify({ audio: audioStore })
-		})
-			.then((response) => response.json())
-			.then((data) => {
-				console.log('Success:', data);
-				resultStore.set(data);
-			})
-			.catch((error) => {
-				console.error('Error:', error);
-			});
-	}
 </script>
 
 {#if state === 'empty'}
@@ -72,6 +54,5 @@
 	<div class="flex">
 		<Button on:click={() => playAudio()}>Play</Button>
 		<Button on:click={() => pauseAudio()}>Pause</Button>
-		<Button on:click={() => recognizeAudio()}>Recognize</Button>
 	</div>
 {/if}

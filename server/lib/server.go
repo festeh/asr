@@ -51,12 +51,15 @@ func (s *Server) handleRecognition() handler {
 			http.Error(w, "Error parsing request", http.StatusBadRequest)
 			return
 		}
+		fmt.Println("Parsed data")
 		audio, err := DecodeAudio(parsed.AudioEncoded)
+		fmt.Println("Decoded audio")
 		if err != nil {
 			http.Error(w, "Error processing audio", http.StatusInternalServerError)
 			return
 		}
 		s.model.Predict(audio, parsed.Lang)
+		fmt.Println("Predicted")
 		fmt.Fprint(w, "done")
 	}
 }

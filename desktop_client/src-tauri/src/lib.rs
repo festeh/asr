@@ -8,11 +8,9 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::Mutex;
 
-use cpal::platform::AlsaDevice;
 use cpal::traits::DeviceTrait;
 use cpal::traits::HostTrait;
 use cpal::traits::StreamTrait;
-use cpal::Device;
 use cpal::{FromSample, Sample};
 
 #[derive(Clone)]
