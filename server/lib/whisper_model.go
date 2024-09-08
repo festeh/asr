@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	whisper "github.com/ggerganov/whisper.cpp/bindings/go"
+	whisper "github.com/ggerganov/whisper.cpp/bindings/go/pkg/whisper"
 )
 
 func LoadWhisperModel(modelPath string) (*WhisperModel, error) {
@@ -28,4 +28,23 @@ func LoadWhisperModel(modelPath string) (*WhisperModel, error) {
 		model:   model,
 		context: context,
 	}, nil
+}
+
+type WhisperModel struct {
+	model   whisper.Model
+	context whisper.Context
+}
+
+func (w *WhisperModel) Predict(data []float32, lang string) error {
+	println("Predicting...")
+	w.context.SetLanguage(lang)
+	var cb whisper.SegmentCallback = func(segment whisper.Segment) {
+		// Do something with the Segment
+		println(segment.Text)
+	}
+	err := w.context.Process(data, cb, nil)
+	if err != nil {
+		return err
+	}
+	return nil
 }

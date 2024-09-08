@@ -50,34 +50,6 @@ func parseData(r *http.Request) (*RequestData, error) {
 	return &reqData, nil
 }
 
-func (s *Server) handleRecognition() handler {
-	return func(w http.ResponseWriter, r *http.Request) {
-		fmt.Println("Received request")
-		defer func() { <-s.queue }()
-		s.queue <- 1
-		fmt.Println("Processing...")
-		parsed, err := parseData(r)
-		if err != nil {
-			http.Error(w, "Error parsing request", http.StatusBadRequest)
-			return
-		}
-		fmt.Println("Parsed data")
-		audio, err := DecodeAudio(parsed.AudioEncoded)
-		fmt.Println("Decoded audio")
-		if err != nil {
-			http.Error(w, "Error processing audio", http.StatusInternalServerError)
-			return
-		}
-		result, err := s.model.Predict(audio, parsed.Lang)
-		if err != nil {
-			http.Error(w, fmt.Sprintf("Error predicting: %v", err), http.StatusInternalServerError)
-			return
-		}
-		fmt.Println("Predicted")
-		json.NewEncoder(w).Encode(map[string]string{"result": result})
-	}
-}
-
 func (s *Server) handleGoogleStreaming() handler {
 	return func(w http.ResponseWriter, r *http.Request) {
 		fmt.Println("Received Google streaming request")
@@ -158,7 +130,6 @@ func (s *Server) handleWhisperLocal() handler {
 }
 
 func (s *Server) ListenAndServe(addr string) error {
-	http.HandleFunc("/recognize", s.handleRecognition())
 	http.HandleFunc("/google/streaming", s.handleGoogleStreaming())
 	http.HandleFunc("/whisper/local", s.handleWhisperLocal())
 
