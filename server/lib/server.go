@@ -7,8 +7,8 @@ import (
 )
 
 type Server struct {
-	queue chan int
-	model *WhisperModel
+	queue        chan int
+	model        *WhisperModel
 	googleSpeech *GoogleSpeechClient
 }
 
@@ -19,15 +19,15 @@ func NewServer(model *WhisperModel) (*Server, error) {
 		return nil, fmt.Errorf("failed to create Google Speech client: %v", err)
 	}
 	return &Server{
-		queue: queue,
-		model: model,
+		queue:        queue,
+		model:        model,
 		googleSpeech: googleSpeech,
 	}, nil
 }
 
 type RequestData struct {
 	AudioEncoded string `json:"audio"`
-	Lang	string `json:"lang"`
+	Lang         string `json:"lang"`
 }
 
 type handler func(http.ResponseWriter, *http.Request)
@@ -115,9 +115,54 @@ func (s *Server) handleGoogleStreaming() handler {
 	}
 }
 
+func (s *Server) handleWhisperLocal() handler {
+	return func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println("Received Whisper local request")
+		defer func() { <-s.queue }()
+		s.queue <- 1
+
+		parsed, err := parseData(r)
+		if err != nil {
+			http.Error(w, "Error parsing request", http.StatusBadRequest)
+			return
+		}
+
+		audio, err := DecodeAudio(parsed.AudioEncoded)
+		if err != nil {
+			http.Error(w, "Error processing audio", http.StatusInternalServerError)
+			return
+		}
+
+		result := make(chan string)
+		go func() {
+			s.model.Predict(audio, parsed.Lang)
+			result <- "Transcription completed"
+		}()
+
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.Header().Set("Cache-Control", "no-cache")
+		w.Header().Set("Connection", "keep-alive")
+
+		flusher, ok := w.(http.Flusher)
+		if !ok {
+			http.Error(w, "Streaming unsupported", http.StatusInternalServerError)
+			return
+		}
+
+		select {
+		case msg := <-result:
+			fmt.Fprintf(w, "data: %s\n\n", msg)
+			flusher.Flush()
+		case <-r.Context().Done():
+			return
+		}
+	}
+}
+
 func (s *Server) ListenAndServe(addr string) error {
 	http.HandleFunc("/recognize", s.handleRecognition())
 	http.HandleFunc("/google/streaming", s.handleGoogleStreaming())
+	http.HandleFunc("/whisper/local", s.handleWhisperLocal())
 
 	return http.ListenAndServe(addr, nil)
 }
