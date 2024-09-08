@@ -3,6 +3,7 @@ package lib
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	whisper "github.com/ggerganov/whisper.cpp/bindings/go/pkg/whisper"
 )
@@ -35,16 +36,16 @@ type WhisperModel struct {
 	context whisper.Context
 }
 
-func (w *WhisperModel) Predict(data []float32, lang string) error {
+func (w *WhisperModel) Predict(data []float32, lang string) (string, error) {
 	println("Predicting...")
 	w.context.SetLanguage(lang)
+	var result string
 	var cb whisper.SegmentCallback = func(segment whisper.Segment) {
-		// Do something with the Segment
-		println(segment.Text)
+		result += segment.Text + " "
 	}
 	err := w.context.Process(data, cb, nil)
 	if err != nil {
-		return err
+		return "", err
 	}
-	return nil
+	return strings.TrimSpace(result), nil
 }

@@ -118,14 +118,14 @@ func (s *Server) handleWhisperLocal() handler {
 			return
 		}
 
-		result, err := s.model.Predict(audio, parsed.Lang)
+		recognizedText, err := s.model.Predict(audio, parsed.Lang)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("Error predicting: %v", err), http.StatusInternalServerError)
 			return
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]string{"result": result})
+		json.NewEncoder(w).Encode(map[string]string{"result": recognizedText})
 	}
 }
 
