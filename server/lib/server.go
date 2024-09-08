@@ -25,6 +25,10 @@ func NewServer(model *WhisperModel) (*Server, error) {
 	}, nil
 }
 
+func (s *Server) modelLoaded() bool {
+	return s.model != nil
+}
+
 type RequestData struct {
 	AudioEncoded string `json:"audio"`
 	Lang         string `json:"lang"`
@@ -124,6 +128,11 @@ func (s *Server) handleWhisperLocal() handler {
 		fmt.Println("Received Whisper local request")
 		defer func() { <-s.queue }()
 		s.queue <- 1
+
+		if !s.modelLoaded() {
+			http.Error(w, "Whisper model not loaded", http.StatusServiceUnavailable)
+			return
+		}
 
 		parsed, err := parseData(r)
 		if err != nil {
