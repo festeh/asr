@@ -15,7 +15,10 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	server := lib.NewServer(model)
+	server, err := lib.NewServer(model)
+	if err != nil {
+		log.Fatal(err)
+	}
 	
 	addr := fmt.Sprintf(":%d", *port)
 	fmt.Printf("Server is running on %s\n", addr)
