@@ -64,9 +64,13 @@ func (s *Server) handleRecognition() handler {
 			http.Error(w, "Error processing audio", http.StatusInternalServerError)
 			return
 		}
-		s.model.Predict(audio, parsed.Lang)
+		result, err := s.model.Predict(audio, parsed.Lang)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("Error predicting: %v", err), http.StatusInternalServerError)
+			return
+		}
 		fmt.Println("Predicted")
-		fmt.Fprint(w, "done")
+		json.NewEncoder(w).Encode(map[string]string{"result": result})
 	}
 }
 
@@ -133,29 +137,14 @@ func (s *Server) handleWhisperLocal() handler {
 			return
 		}
 
-		result := make(chan string)
-		go func() {
-			s.model.Predict(audio, parsed.Lang)
-			result <- "Transcription completed"
-		}()
-
-		w.Header().Set("Content-Type", "text/event-stream")
-		w.Header().Set("Cache-Control", "no-cache")
-		w.Header().Set("Connection", "keep-alive")
-
-		flusher, ok := w.(http.Flusher)
-		if !ok {
-			http.Error(w, "Streaming unsupported", http.StatusInternalServerError)
+		result, err := s.model.Predict(audio, parsed.Lang)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("Error predicting: %v", err), http.StatusInternalServerError)
 			return
 		}
 
-		select {
-		case msg := <-result:
-			fmt.Fprintf(w, "data: %s\n\n", msg)
-			flusher.Flush()
-		case <-r.Context().Done():
-			return
-		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{"result": result})
 	}
 }
 
