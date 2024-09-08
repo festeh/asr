@@ -3,20 +3,27 @@ package lib
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 )
 
 type Server struct {
 	queue chan int
 	model *WhisperModel
+	googleSpeech *GoogleSpeechClient
 }
 
-func NewServer(model *WhisperModel) *Server {
+func NewServer(model *WhisperModel) (*Server, error) {
 	queue := make(chan int, 1)
+	googleSpeech, err := NewGoogleSpeechClient()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Google Speech client: %v", err)
+	}
 	return &Server{
 		queue: queue,
 		model: model,
-	}
+		googleSpeech: googleSpeech,
+	}, nil
 }
 
 type RequestData struct {
@@ -64,8 +71,54 @@ func (s *Server) handleRecognition() handler {
 	}
 }
 
+func (s *Server) handleGoogleStreaming() handler {
+	return func(w http.ResponseWriter, r *http.Request) {
+		fmt.Println("Received Google streaming request")
+		defer func() { <-s.queue }()
+		s.queue <- 1
+
+		lang := r.URL.Query().Get("lang")
+		if lang == "" {
+			lang = "en-US"
+		}
+
+		resultChan, errChan := s.googleSpeech.StreamingRecognize(r.Context(), r.Body, lang)
+
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.Header().Set("Cache-Control", "no-cache")
+		w.Header().Set("Connection", "keep-alive")
+
+		flusher, ok := w.(http.Flusher)
+		if !ok {
+			http.Error(w, "Streaming unsupported", http.StatusInternalServerError)
+			return
+		}
+
+		for {
+			select {
+			case result, ok := <-resultChan:
+				if !ok {
+					return
+				}
+				fmt.Fprintf(w, "data: %s\n\n", result)
+				flusher.Flush()
+			case err, ok := <-errChan:
+				if !ok {
+					return
+				}
+				fmt.Fprintf(w, "event: error\ndata: %s\n\n", err.Error())
+				flusher.Flush()
+				return
+			case <-r.Context().Done():
+				return
+			}
+		}
+	}
+}
+
 func (s *Server) ListenAndServe(addr string) error {
 	http.HandleFunc("/recognize", s.handleRecognition())
+	http.HandleFunc("/google/streaming", s.handleGoogleStreaming())
 
 	return http.ListenAndServe(addr, nil)
 }
