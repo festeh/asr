@@ -120,7 +120,10 @@ impl AudioRecorder {
         let stream = match self.config.sample_format() {
             cpal::SampleFormat::F32 => self.device.build_input_stream(
                 &self.config.clone().into(),
-                move |data, _: &_| write_input_data::<f32, f32>(data, &writer_2),
+                move |data, _: &_| {
+                    println!("Data: {:?}", data.len());
+                    write_input_data::<f32, f32>(data, &writer_2);
+                },
                 err_fn,
                 None,
             )?,
@@ -146,7 +149,6 @@ impl AudioRecorder {
             if max_duration.as_secs() == 0 {
                 break;
             }
-            println!("Recording...");
         }
         drop(stream);
         writer.lock().unwrap().take().unwrap().finalize()?;

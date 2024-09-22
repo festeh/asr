@@ -6,7 +6,7 @@
 	import Button from './button.svelte';
 
 	let status: RecordingStatus = RecordingStatus.IDLE;
-	$: buttonText = status === RecordingStatus.IDLE ? 'Record' : 'Stop';
+	$: buttonText = status === RecordingStatus.IDLE ? 'Start Recording' : 'Stop';
 
 	function toggleStatus() {
 		if (status === RecordingStatus.IDLE) {
@@ -30,7 +30,7 @@
 
 <div class="flex">
   <Button on:click={toggleStatus}>{buttonText}</Button>
-	<div class="border flex justify-center items-center rounded-lg p-2 font-bold bg-secondary-700">
-		{status}
-	</div>
+	<!-- <div class="border flex justify-center items-center rounded-lg p-2 font-bold bg-secondary-700"> -->
+	<!-- 	{status} -->
+	<!-- </div> -->
 </div>

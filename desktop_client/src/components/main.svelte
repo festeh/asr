@@ -2,7 +2,7 @@
 	import Recording from './recording.svelte';
   import Result from './result.svelte';
   import LanguageSelector from './language_select.svelte';
-	import Control from './control.svelte';
+	import Playback from './playback.svelte';
 </script>
 
 <div class="flex h-screen flex-col items-center text-lg font-sans">
@@ -13,7 +13,7 @@
 	</div>
 	<div class="h-1/5">
 		<div class="flex h-full flex-col justify-start">
-			<Control />
+			<Playback />
 		</div>
 	</div>
 	<div class="h-1/5">

@@ -40,3 +40,8 @@ path = "src/bin/audio_record.rs"
 [[bin]]
 name = "resample"
 path = "src/bin/resample.rs"
+
+[[bin]]
+name = "simulate_streaming"
+path = "src/bin/simulate_streaming.rs"
+
