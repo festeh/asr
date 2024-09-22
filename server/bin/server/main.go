@@ -9,7 +9,8 @@ import (
 
 func main() {
 	port := flag.Int("port", 8080, "port number to run the server on")
-	modelPath := flag.String("model", "/home/dlipin/projects/audiorec/whisper.cpp/models/ggml-small.bin", "Path to the Whisper model file")
+	// TODO: resolve username
+	modelPath := flag.String("model", "/home/dima/Projects/asr/cpp/whisper.cpp/models/ggml-small.bin", "Path to the Whisper model file")
 	flag.Parse()
 	var model *lib.WhisperModel
 	var err error

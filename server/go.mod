@@ -1,10 +1,12 @@
 module whisper_server
 
-go 1.21.5
+go 1.23
+
+toolchain go1.23.0
 
 require (
 	cloud.google.com/go/speech v1.21.0
-	github.com/ggerganov/whisper.cpp/bindings/go v0.0.0-20240219135425-b602819b6eae
+	github.com/ggerganov/whisper.cpp/bindings/go v0.0.0-20240920124536-34972dbe2217
 	github.com/go-audio/wav v1.1.0
 	google.golang.org/grpc v1.60.1
 )
